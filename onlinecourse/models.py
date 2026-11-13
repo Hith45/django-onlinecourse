@@ -1,6 +1,48 @@
 from django.db import models
 from django.utils.timezone import now
+from django.conf import settings
 
+
+
+
+class Instructor(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+    full_time = models.BooleanField(default=True)
+    total_learners = models.IntegerField()
+
+    def __str__(self):
+        return self.user.username
+
+
+class Learner(models.Model):
+    STUDENT = 'student'
+    DEVELOPER = 'developer'
+    DATA_SCIENTIST = 'data_scientist'
+    DATABASE_ADMIN = 'dba'
+
+    OCCUPATION_CHOICES = [
+        (STUDENT, 'Student'),
+        (DEVELOPER, 'Developer'),
+        (DATA_SCIENTIST, 'Data Scientist'),
+        (DATABASE_ADMIN, 'Database Admin')
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+    occupation = models.CharField(
+        max_length=20,
+        choices=OCCUPATION_CHOICES,
+        default=STUDENT
+    )
+    social_link = models.URLField(max_length=200)
+
+    def __str__(self):
+        return self.user.username + "," + self.occupation
 
 class Course(models.Model):
     name = models.CharField(max_length=200)
@@ -36,12 +78,19 @@ class Enrollment(models.Model):
 
 
 class Question(models.Model):
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
     question_text = models.CharField(max_length=200)
     grade = models.IntegerField(default=1)
 
     def __str__(self):
         return self.question_text
+
+    def is_get_score(self, selected_choices):
+        correct_choices = set(
+            self.choice_set.filter(is_correct=True).values_list('id', flat=True)
+        )
+        selected_choices = set(selected_choices)
+        return correct_choices == selected_choices
 
 
 class Choice(models.Model):
