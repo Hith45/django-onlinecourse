@@ -24,23 +24,40 @@ def submit(request, course_id):
     submission_id = submission.id
 
     return HttpResponseRedirect(
-        reverse('onlinecourse:exam_result', args=(course_id, submission_id))
+        reverse('onlinecourse:show_exam_result', args=(course_id, submission_id))
     )
 
 
 def show_exam_result(request, course_id, submission_id):
     course = get_object_or_404(Course, pk=course_id)
     submission = get_object_or_404(Submission, id=submission_id)
+
     choices = submission.choices.all()
+    selected_ids = list(choices.values_list('id', flat=True))
 
     total_score = 0
-    for choice in choices:
-        if choice.is_correct:
-            total_score += choice.question.grade
+    questions = course.question_set.all()
+    maximum_score = sum(question.grade for question in questions)
+
+    for question in questions:
+        question_selected_ids = choices.filter(
+            question=question
+        ).values_list('id', flat=True)
+
+        if question.is_get_score(question_selected_ids):
+            total_score += question.grade
+
+    percentage = round((total_score / maximum_score) * 100) if maximum_score else 0
 
     context = {
         'course': course,
-        'grade': total_score,
+        'grade': percentage,
         'choices': choices,
+        'selected_ids': selected_ids,
     }
-    return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
+
+    return render(
+        request,
+        'onlinecourse/exam_result_bootstrap.html',
+        context
+    )
